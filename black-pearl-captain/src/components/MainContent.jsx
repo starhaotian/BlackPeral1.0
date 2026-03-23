@@ -10,7 +10,8 @@ function MainContent({
   onKeyPress,
   isTyping,
   sidebarOpen,
-  onToggleSidebar
+  onToggleSidebar,
+  isAgentBayConfigured
 }) {
   return (
     <main className="flex-1 flex flex-col min-w-0 bg-[#0a0a0f]">
@@ -36,8 +37,17 @@ function MainContent({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-          <span className="text-xs text-[#64748b]">在线</span>
+          {isAgentBayConfigured ? (
+            <>
+              <span className="w-2 h-2 rounded-full bg-[#8b5cf6] animate-pulse"></span>
+              <span className="text-xs text-[#8b5cf6]">AgentBay 已连接</span>
+            </>
+          ) : (
+            <>
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+              <span className="text-xs text-[#64748b]">在线</span>
+            </>
+          )}
         </div>
       </header>
 

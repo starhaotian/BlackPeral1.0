@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import Sidebar from './components/Sidebar'
 import MainContent from './components/MainContent'
+import { useAgentBay } from './hooks/useAgentBay'
 import './index.css'
 
 const generateId = () => Math.random().toString(36).substr(2, 9)
@@ -20,12 +21,15 @@ function App() {
   const [currentSessionId, setCurrentSessionId] = useState('1')
   const [messagesBySession, setMessagesBySession] = useState({
     '1': [
-      { id: '1', role: 'ai', content: '你好！我是黑珍珠船长，你的AI助手。有什么我可以帮你的吗？', timestamp: Date.now() }
+      { id: '1', role: 'ai', content: '你好！我是黑珍珠船长，你的AI助手。有什么我可以帮你的吗？\n\n我可以帮你：\n• 执行代码（Python/JavaScript）\n• 打开浏览器自动化操作\n• 创建/管理 AgentBay 会话', timestamp: Date.now() }
     ]
   })
   const [inputText, setInputText] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+
+  // AgentBay Hook
+  const { executeCommand, isConfigured } = useAgentBay()
 
   const currentMessages = messagesBySession[currentSessionId] || []
 
@@ -40,7 +44,7 @@ function App() {
     setMessagesBySession(prev => ({
       ...prev,
       [newSession.id]: [
-        { id: generateId(), role: 'ai', content: '你好！我是黑珍珠船长，你的AI助手。有什么我可以帮你的吗？', timestamp: Date.now() }
+        { id: generateId(), role: 'ai', content: '你好！我是黑珍珠船长，你的AI助手。有什么我可以帮你的吗？\n\n我可以帮你：\n• 执行代码（Python/JavaScript）\n• 打开浏览器自动化操作\n• 创建/管理 AgentBay 会话', timestamp: Date.now() }
       ]
     }))
   }, [])
@@ -90,20 +94,90 @@ function App() {
     setInputText('')
     setIsTyping(true)
 
-    setTimeout(() => {
-      const aiMessage = {
-        id: generateId(),
-        role: 'ai',
-        content: mockResponses[Math.floor(Math.random() * mockResponses.length)],
-        timestamp: Date.now()
+    // 检查是否是 AgentBay 命令
+    const lowerInput = inputText.toLowerCase()
+    const isAgentBayCommand = 
+      lowerInput.includes('执行代码') ||
+      lowerInput.includes('运行代码') ||
+      lowerInput.includes('打开浏览器') ||
+      lowerInput.includes('访问网站') ||
+      lowerInput.includes('创建会话') ||
+      lowerInput.includes('删除会话') ||
+      lowerInput.includes('关闭会话') ||
+      lowerInput.startsWith('/agent')
+
+    if (isAgentBayCommand) {
+      try {
+        const result = await executeCommand(inputText)
+        
+        const aiMessage = {
+          id: generateId(),
+          role: 'ai',
+          content: formatAgentBayResult(result),
+          timestamp: Date.now()
+        }
+        setMessagesBySession(prev => ({
+          ...prev,
+          [currentSessionId]: [...(prev[currentSessionId] || []), aiMessage]
+        }))
+      } catch (error) {
+        const aiMessage = {
+          id: generateId(),
+          role: 'ai',
+          content: `❌ 执行失败: ${error.message}`,
+          timestamp: Date.now()
+        }
+        setMessagesBySession(prev => ({
+          ...prev,
+          [currentSessionId]: [...(prev[currentSessionId] || []), aiMessage]
+        }))
       }
-      setMessagesBySession(prev => ({
-        ...prev,
-        [currentSessionId]: [...(prev[currentSessionId] || []), aiMessage]
-      }))
       setIsTyping(false)
-    }, 1200)
-  }, [inputText, isTyping, currentSessionId, messagesBySession])
+    } else {
+      // 普通对话，使用模拟回复
+      setTimeout(() => {
+        const aiMessage = {
+          id: generateId(),
+          role: 'ai',
+          content: mockResponses[Math.floor(Math.random() * mockResponses.length)],
+          timestamp: Date.now()
+        }
+        setMessagesBySession(prev => ({
+          ...prev,
+          [currentSessionId]: [...(prev[currentSessionId] || []), aiMessage]
+        }))
+        setIsTyping(false)
+      }, 1200)
+    }
+  }, [inputText, isTyping, currentSessionId, messagesBySession, executeCommand])
+
+  // 格式化 AgentBay 执行结果
+  const formatAgentBayResult = (result) => {
+    if (!result) return '执行完成，但没有返回结果'
+    
+    switch (result.type) {
+      case 'code_execution':
+        return `✅ 代码执行成功！\n\n**输出结果：**\n\`\`\`\n${result.result || '无输出'}\n\`\`\``
+      
+      case 'browser_action':
+        return `🌐 浏览器操作完成！\n\n${result.result}\n\n${result.endpoint ? `端点地址: ${result.endpoint}` : ''}`
+      
+      case 'session_created':
+        return `✅ ${result.result}`
+      
+      case 'session_deleted':
+        return `🗑️ ${result.result}`
+      
+      case 'error':
+        return `❌ ${result.result}`
+      
+      case 'help':
+        return `📖 AgentBay 使用帮助\n\n${result.result}`
+      
+      default:
+        return `${result.result || '执行完成'}`
+    }
+  }
 
   const handleKeyPress = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -132,6 +206,7 @@ function App() {
         isTyping={isTyping}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        isAgentBayConfigured={isConfigured}
       />
     </div>
   )
