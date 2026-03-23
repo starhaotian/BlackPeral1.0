@@ -1,52 +1,103 @@
 # 黑珍珠船长 (Black Pearl Captain)
 
-一个优雅、具有科技感的 AI 对话界面，采用黑色和紫色主题设计。
+一个优雅的 AI 对话界面，基于阿里云 [无影 AgentBay](https://www.aliyun.com/product/wuying/agentbay) 打造，支持实时流式对话。
 
-![黑珍珠船长](https://img.shields.io/badge/Black%20Pearl%20Captain-AI%20Chat-purple)
-![React](https://img.shields.io/badge/React-18-blue)
-![Vite](https://img.shields.io/badge/Vite-5-646CFF)
+![Black Pearl Captain](https://img.shields.io/badge/Black%20Pearl%20Captain-AI%20Chat-purple)
+![React](https://img.shields.io/badge/React-19-blue)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3-38B2AC)
 
 ## 功能特性
 
-- **历史会话管理**：创建、切换、删除对话记录
-- **实时 AI 对话**：流畅的聊天交互体验
-- **优雅界面设计**：
-  - 黑色 + 紫色科技主题
-  - 玻璃态效果 (Glassmorphism)
-  - 紫色渐变光晕
-  - 流畅的动画过渡
-- **响应式布局**：支持桌面端和移动端
-- **消息操作**：复制消息内容
+- **实时 AI 对话** — 基于 SSE 流式传输，打字机效果逐字呈现
+- **会话管理** — 创建、切换、删除多轮对话
+- **科技感界面** — 黑紫配色 + 玻璃态效果 + 渐变光晕动画
+- **响应式布局** — 桌面端 / 移动端自适应
 
-## 技术栈
+## 前置要求
 
-- **前端框架**：React 18
-- **构建工具**：Vite
-- **样式框架**：Tailwind CSS 3
-- **图标库**：Lucide React
+| 工具 | 版本 |
+|------|------|
+| **Node.js** | >= 18 |
+| **Python** | >= 3.8 |
+| **npm** | >= 9 |
+
+你还需要一对阿里云 AccessKey（用于调用 AgentBay API）：
+> 获取方式：[阿里云 RAM 控制台 → AccessKey 管理](https://ram.console.aliyun.com/manage/ak)
 
 ## 快速开始
 
-### 安装依赖
+### 1. 克隆项目
+
+```bash
+git clone https://github.com/starhaotian/BlackPeral1.0.git
+cd BlackPeral1.0/black-pearl-captain
+```
+
+### 2. 配置环境变量
+
+```bash
+cp .env.example .env
+```
+
+编辑 `.env` 文件，填入你的阿里云 AccessKey：
+
+```env
+ALIBABA_CLOUD_ACCESS_KEY_ID=your_access_key_id
+ALIBABA_CLOUD_ACCESS_KEY_SECRET=your_access_key_secret
+```
+
+### 3. 安装前端依赖
 
 ```bash
 npm install
 ```
 
-### 启动开发服务器
+### 4. 安装后端依赖
+
+```bash
+cd server
+python3 -m venv venv
+source venv/bin/activate   # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cd ..
+```
+
+### 5. 启动服务
+
+需要开 **两个终端**，分别启动后端和前端：
+
+**终端 1 — 启动后端代理服务（端口 3001）：**
+
+```bash
+cd server
+source venv/bin/activate   # Windows: venv\Scripts\activate
+python app.py
+```
+
+**终端 2 — 启动前端开发服务器（端口 5173）：**
 
 ```bash
 npm run dev
 ```
 
-访问 http://localhost:5173 查看应用
+### 6. 打开浏览器
 
-### 构建生产版本
+访问 **http://localhost:5173** 即可开始对话 🎉
 
-```bash
-npm run build
+## 架构说明
+
 ```
+浏览器 (React)          Vite 代理             Flask 后端             阿里云 API
+  ┌──────────┐       ┌──────────┐        ┌──────────┐        ┌──────────────┐
+  │ localhost │──/api──▶ localhost │───────▶│ localhost │──签名──▶│ AgentBay     │
+  │   :5173   │◀─SSE──│   :5173   │◀──SSE──│   :3001   │◀─SSE──│ wuyingai.cn  │
+  └──────────┘       └──────────┘        └──────────┘        └──────────────┘
+```
+
+- **前端** 发送请求到 `/api/*`，由 Vite 开发代理转发到后端
+- **后端** 使用 POP V1 签名获取 ChatToken，然后调用 AgentBay Chat API
+- **SSE 流** 从阿里云 → 后端 → 前端，实现实时流式对话
 
 ## 项目结构
 
@@ -54,67 +105,61 @@ npm run build
 black-pearl-captain/
 ├── src/
 │   ├── components/
-│   │   ├── Sidebar.jsx          # 侧边栏组件
-│   │   ├── MainContent.jsx      # 主内容区组件
-│   │   ├── ChatArea.jsx         # 聊天区域组件
-│   │   ├── MessageBubble.jsx    # 消息气泡组件
-│   │   ├── InputArea.jsx        # 输入框组件
-│   │   └── TypingIndicator.jsx  # 输入中指示器
+│   │   ├── Sidebar.jsx          # 侧边栏 — 会话列表
+│   │   ├── MainContent.jsx      # 主内容区容器
+│   │   ├── ChatArea.jsx         # 聊天区域 — 消息展示
+│   │   ├── MessageBubble.jsx    # 消息气泡（支持 Markdown）
+│   │   ├── InputArea.jsx        # 输入框
+│   │   ├── TypingIndicator.jsx  # 打字中动画
+│   │   └── Icons.jsx            # SVG 图标组件
+│   ├── hooks/
+│   │   └── useAgentBayChat.js   # Chat Hook — 管理流式状态
+│   ├── services/
+│   │   └── agentbayChat.js      # Chat Service — SSE 解析与去重
 │   ├── App.jsx                  # 应用主组件
-│   ├── index.css                # 全局样式
+│   ├── index.css                # 全局样式 + Tailwind
 │   └── main.jsx                 # 入口文件
-├── index.html
-├── package.json
-├── tailwind.config.js
-└── vite.config.js
+├── server/
+│   ├── app.py                   # Flask 后端 — POP V1 签名代理
+│   └── requirements.txt         # Python 依赖
+├── .env.example                 # 环境变量模板
+├── package.json                 # 前端依赖 & 脚本
+├── vite.config.js               # Vite 配置（含 API 代理）
+└── tailwind.config.js           # Tailwind 配置
 ```
 
-## 界面预览
+## 常用命令
 
-### 配色方案
+| 命令 | 说明 |
+|------|------|
+| `npm run dev` | 启动前端开发服务器（热更新） |
+| `npm run build` | 构建生产版本到 `dist/` |
+| `npm run preview` | 预览生产构建 |
+| `npm run lint` | ESLint 代码检查 |
+| `python server/app.py` | 启动后端代理服务 |
 
-| 颜色 | 色值 | 用途 |
-|------|------|------|
-| 主背景 | `#0a0a0f` | 页面背景 |
-| 次背景 | `#12121a` | 卡片/面板 |
-| 紫色主色 | `#8b5cf6` | 按钮、强调 |
-| 紫色次色 | `#a78bfa` | 渐变、悬停 |
-| 紫色强调 | `#c084fc` | 光晕效果 |
-| 文字主色 | `#ffffff` | 主要文字 |
-| 文字次色 | `#94a3b8` | 次要文字 |
+## 常见问题
 
-### 核心功能
+**Q: 后端启动报 `AK/SK 未配置`？**
+A: 确认 `.env` 文件在 `black-pearl-captain/` 目录下，且 `ALIBABA_CLOUD_ACCESS_KEY_ID` 和 `ALIBABA_CLOUD_ACCESS_KEY_SECRET` 已正确填写。
 
-1. **会话管理**
-   - 点击"新对话"创建会话
-   - 点击历史会话切换
-   - 悬停显示删除按钮
+**Q: 前端请求 `/api/chat` 返回 502？**
+A: 确认后端已在端口 3001 启动。Vite 开发代理会将 `/api` 请求转发到 `localhost:3001`。
 
-2. **消息交互**
-   - 输入消息按 Enter 发送
-   - 支持多行文本（Shift+Enter 换行）
-   - 悬停消息显示复制按钮
+**Q: 对话没有响应或超时？**
+A: 检查后端终端日志，确认 ChatToken 获取成功。如果出现签名错误，请核实 AccessKey 是否有 AgentBay 服务的访问权限。
 
-3. **响应式设计**
-   - 桌面端：显示完整侧边栏
-   - 移动端：侧边栏可折叠
+## 技术栈
 
-## 开发计划
-
-- [ ] 接入真实 AI API
-- [ ] 消息持久化存储
-- [ ] 代码高亮显示
-- [ ] 文件上传功能
-- [ ] 主题切换
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request！
+| 层 | 技术 |
+|----|------|
+| 前端框架 | React 19 |
+| 构建工具 | Vite 8 |
+| 样式 | Tailwind CSS 3 |
+| 后端 | Python Flask |
+| AI 服务 | 阿里云无影 AgentBay |
+| 通信协议 | SSE (Server-Sent Events) |
 
 ## 许可证
 
 MIT License
-
----
-
-Made with by 黑珍珠船长团队
