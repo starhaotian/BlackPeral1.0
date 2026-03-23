@@ -88,13 +88,20 @@ class AgentBayChatService {
       const decoder = new TextDecoder();
       let buffer = '';
       let fullText = '';
+      const processedSeqNums = new Set(); // 基于 SequenceNumber 去重
+      let completed = false; // 标记是否已通过 response.completed 完成
+      let currentMessageId = null; // 跟踪当前消息 ID，防止多条消息内容重复累加
 
       while (true) {
         const { done, value } = await reader.read();
 
         if (done) {
           console.log('[AgentBay] SSE 流结束');
-          onComplete?.(fullText);
+          // onComplete 由 response.completed 事件触发，避免重复调用
+          // 如果流结束但未收到 completed 事件，兜底调用
+          if (!completed) {
+            onComplete?.(fullText);
+          }
           break;
         }
 
@@ -118,20 +125,43 @@ class AgentBayChatService {
               const data = JSON.parse(dataStr);
               console.log('[AgentBay] 解析数据:', data); // 调试日志
 
+              // 基于 SequenceNumber 去重，跳过已处理的事件
+              const seqNum = data.SequenceNumber || data.sequenceNumber;
+              if (seqNum !== undefined) {
+                if (processedSeqNums.has(seqNum)) {
+                  console.log('[AgentBay] 跳过重复事件, SequenceNumber:', seqNum);
+                  continue;
+                }
+                processedSeqNums.add(seqNum);
+              }
+
               // 根据 Object 类型处理不同事件
-              // 注意：API 可能返回 "response", "message", "content" 等不同类型
               const objectType = data.Object || data.object;
               const status = data.Status || data.status;
               const type = data.Type || data.type;
               const text = data.Text || data.text;
+              const messageId = data.MessageId || data.messageId;
 
               switch (objectType) {
                 case 'content':
                   // 处理文本内容
                   if (type === 'text' && text) {
-                    fullText += text;
-                    onMessage?.(text, fullText);
-                    console.log('[AgentBay] 收到文本:', text);
+                    // 检测到新消息时重置 fullText，防止多条消息内容重复拼接
+                    if (messageId && currentMessageId && messageId !== currentMessageId) {
+                      console.log('[AgentBay] 新消息开始，重置 fullText. 旧:', currentMessageId, '新:', messageId);
+                      fullText = '';
+                    }
+                    if (messageId) {
+                      currentMessageId = messageId;
+                    }
+                    // 文本级去重：如果 text 已经是 fullText 的尾部，跳过追加
+                    if (fullText.length > 0 && fullText.endsWith(text)) {
+                      console.log('[AgentBay] 跳过重复文本片段:', text.slice(0, 30));
+                    } else {
+                      fullText += text;
+                      onMessage?.(text, fullText);
+                    }
+                    console.log('[AgentBay] 收到文本 (msgId:', messageId, '):', text.slice(0, 50));
                   }
                   break;
 
@@ -139,18 +169,29 @@ class AgentBayChatService {
                   // 只有 response 对象的 completed 表示整个对话结束
                   if (status === 'completed') {
                     console.log('[AgentBay] 对话完成');
+                    completed = true;
                     onComplete?.(fullText);
                     return;
                   }
                   break;
 
-                case 'message':
+                case 'message': {
                   // message 对象的 completed 只表示当前消息完成，不结束循环
+                  const msgId = data.MessageId || data.messageId || data.Id || data.id;
+                  if (status === 'in_progress' && msgId) {
+                    // 新消息开始
+                    if (currentMessageId && msgId !== currentMessageId) {
+                      console.log('[AgentBay] 新 message 开始，重置 fullText. 旧:', currentMessageId, '新:', msgId);
+                      fullText = '';
+                    }
+                    currentMessageId = msgId;
+                  }
                   if (status === 'failed') {
                     throw new Error('对话生成失败');
                   }
-                  console.log('[AgentBay] 消息状态:', status);
+                  console.log('[AgentBay] 消息状态:', status, 'msgId:', msgId);
                   break;
+                }
 
                 case 'error':
                   throw new Error(data.Message || data.message || '对话发生错误');

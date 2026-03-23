@@ -130,7 +130,7 @@ def chat_sse_generator(jwt: str, external_user_id: str, session_id: str, text: s
     for line in resp.iter_lines():
         if line:
             decoded = line.decode("utf-8")
-            print(f"[Chat] SSE: {decoded[:100]}")
+            print(f"[Chat] SSE: {decoded[:300]}")
             # SSE 标准格式：每个事件以双换行结束
             yield decoded + "\n\n"
 
