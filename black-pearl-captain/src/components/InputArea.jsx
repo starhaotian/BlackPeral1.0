@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { Send, Paperclip, Mic } from 'lucide-react'
+import { SendIcon, PaperclipIcon, MicIcon } from './Icons'
 
 function InputArea({ 
   inputText, 
@@ -25,7 +25,7 @@ function InputArea({
             className="p-2 rounded-lg hover:bg-[#1a1a25] text-[#64748b] transition-colors"
             title="上传文件"
           >
-            <Paperclip className="w-5 h-5" />
+            <PaperclipIcon className="w-5 h-5" />
           </button>
 
           <textarea
@@ -44,7 +44,7 @@ function InputArea({
             className="p-2 rounded-lg hover:bg-[#1a1a25] text-[#64748b] transition-colors"
             title="语音输入"
           >
-            <Mic className="w-5 h-5" />
+            <MicIcon className="w-5 h-5" />
           </button>
           
           <button
@@ -56,7 +56,7 @@ function InputArea({
                 : 'bg-[#1a1a25] text-[#64748b] cursor-not-allowed'
             }`}
           >
-            <Send className="w-4 h-4" />
+            <SendIcon className="w-4 h-4" />
           </button>
         </div>
         

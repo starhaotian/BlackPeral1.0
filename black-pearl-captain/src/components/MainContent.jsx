@@ -1,4 +1,4 @@
-import { Menu, Anchor } from 'lucide-react'
+import { MenuIcon, AnchorIcon } from './Icons'
 import ChatArea from './ChatArea'
 import InputArea from './InputArea'
 
@@ -21,12 +21,12 @@ function MainContent({
             onClick={onToggleSidebar}
             className="hidden lg:flex p-2 rounded-lg hover:bg-[#1a1a25] transition-colors"
           >
-            <Menu className="w-5 h-5 text-[#94a3b8]" />
+            <MenuIcon className="w-5 h-5 text-[#94a3b8]" />
           </button>
           
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-md bg-gradient-to-br from-[#8b5cf6] to-[#c084fc] flex items-center justify-center">
-              <Anchor className="w-4 h-4 text-white" />
+              <AnchorIcon className="w-4 h-4 text-white" />
             </div>
             <div>
               <h2 className="text-sm font-semibold text-white">黑珍珠船长</h2>

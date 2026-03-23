@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Copy, Check } from 'lucide-react'
+import { CopyIcon, CheckIcon } from './Icons'
 
 function MessageBubble({ content, role }) {
   const [copied, setCopied] = useState(false)
@@ -34,9 +34,9 @@ function MessageBubble({ content, role }) {
         title="复制"
       >
         {copied ? (
-          <Check className="w-3.5 h-3.5 text-green-400" />
+          <CheckIcon className="w-3.5 h-3.5 text-green-400" />
         ) : (
-          <Copy className="w-3.5 h-3.5 text-[#64748b]" />
+          <CopyIcon className="w-3.5 h-3.5 text-[#64748b]" />
         )}
       </button>
     </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { User, Anchor } from 'lucide-react'
+import { UserIcon, AnchorIcon } from './Icons'
 import MessageBubble from './MessageBubble'
 import TypingIndicator from './TypingIndicator'
 
@@ -26,7 +26,7 @@ function ChatArea({ messages, isTyping }) {
       {messages.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-full text-center">
           <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[#8b5cf6] to-[#c084fc] flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(139,92,246,0.4)]">
-            <Anchor className="w-8 h-8 text-white" />
+            <AnchorIcon className="w-8 h-8 text-white" />
           </div>
           <h2 className="text-xl font-bold text-white mb-2">欢迎 aboard 黑珍珠号</h2>
           <p className="text-sm text-[#94a3b8] max-w-sm mb-6">
@@ -60,9 +60,9 @@ function ChatArea({ messages, isTyping }) {
                   : 'bg-gradient-to-br from-[#8b5cf6] to-[#c084fc]'
               }`}>
                 {message.role === 'user' ? (
-                  <User className="w-4 h-4 text-[#8b5cf6]" />
+                  <UserIcon className="w-4 h-4 text-[#8b5cf6]" />
                 ) : (
-                  <Anchor className="w-4 h-4 text-white" />
+                  <AnchorIcon className="w-4 h-4 text-white" />
                 )}
               </div>
 
@@ -88,7 +88,7 @@ function ChatArea({ messages, isTyping }) {
           {isTyping && (
             <div className="flex gap-3 animate-fade-in">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#8b5cf6] to-[#c084fc] flex items-center justify-center">
-                <Anchor className="w-4 h-4 text-white" />
+                <AnchorIcon className="w-4 h-4 text-white" />
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">

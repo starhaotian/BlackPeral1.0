@@ -1,4 +1,4 @@
-import { Plus, MessageSquare, Trash2, Menu, X, Anchor } from 'lucide-react'
+import { PlusIcon, MessageSquareIcon, TrashIcon, MenuIcon, XIcon, AnchorIcon } from './Icons'
 
 function Sidebar({ 
   sessions, 
@@ -29,7 +29,7 @@ function Sidebar({
           isOpen ? 'hidden' : 'block'
         }`}
       >
-        <Menu className="w-5 h-5 text-[#94a3b8]" />
+        <MenuIcon className="w-5 h-5 text-[#94a3b8]" />
       </button>
 
       {/* Sidebar */}
@@ -43,7 +43,7 @@ function Sidebar({
           <div className="p-4 border-b border-[#1e1e2e]">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#8b5cf6] to-[#c084fc] flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.4)]">
-                <Anchor className="w-5 h-5 text-white" />
+                <AnchorIcon className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1 min-w-0">
                 <h1 className="text-base font-bold text-white truncate">黑珍珠船长</h1>
@@ -53,7 +53,7 @@ function Sidebar({
                 onClick={onToggle}
                 className="p-1.5 rounded-lg hover:bg-[#1e1e2e] lg:hidden"
               >
-                <X className="w-4 h-4 text-[#94a3b8]" />
+                <XIcon className="w-4 h-4 text-[#94a3b8]" />
               </button>
             </div>
             
@@ -61,7 +61,7 @@ function Sidebar({
               onClick={onNewSession}
               className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-[#8b5cf6] to-[#a78bfa] text-white text-sm font-medium flex items-center justify-center gap-2 hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] transition-shadow"
             >
-              <Plus className="w-4 h-4" />
+              <PlusIcon className="w-4 h-4" />
               <span>新对话</span>
             </button>
           </div>
@@ -88,7 +88,7 @@ function Sidebar({
                       ? 'bg-[#8b5cf6]/20' 
                       : 'bg-[#1e1e2e]'
                   }`}>
-                    <MessageSquare className={`w-3.5 h-3.5 ${
+                    <MessageSquareIcon className={`w-3.5 h-3.5 ${
                       currentSessionId === session.id 
                         ? 'text-[#8b5cf6]' 
                         : 'text-[#64748b]'
@@ -112,7 +112,7 @@ function Sidebar({
                     onClick={(e) => onDeleteSession(session.id, e)}
                     className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-red-500/20 transition-all"
                   >
-                    <Trash2 className="w-3.5 h-3.5 text-[#64748b] hover:text-red-400" />
+                    <TrashIcon className="w-3.5 h-3.5 text-[#64748b] hover:text-red-400" />
                   </button>
                 </div>
               ))}
