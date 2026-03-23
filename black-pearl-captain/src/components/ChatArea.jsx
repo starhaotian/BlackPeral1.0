@@ -46,7 +46,10 @@ function ChatArea({ messages, isTyping }) {
         </div>
       ) : (
         <>
-          {messages.map((message, index) => (
+          {messages
+            // 过滤掉内容为空的 AI 消息（等待流式响应时的占位消息）
+            .filter(msg => !(msg.role === 'ai' && !msg.content))
+            .map((message, index) => (
             <div 
               key={message.id}
               className={`flex gap-3 animate-fade-in ${
