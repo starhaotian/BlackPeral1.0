@@ -131,7 +131,8 @@ def chat_sse_generator(jwt: str, external_user_id: str, session_id: str, text: s
         if line:
             decoded = line.decode("utf-8")
             print(f"[Chat] SSE: {decoded[:100]}")
-            yield decoded + "\n"
+            # SSE 标准格式：每个事件以双换行结束
+            yield decoded + "\n\n"
 
 
 @app.route("/api/chat", methods=["POST", "OPTIONS"])

@@ -103,6 +103,7 @@ class AgentBayChatService {
         buffer = lines.pop() || '';
 
         for (const line of lines) {
+          console.log('[AgentBay] SSE line:', line); // 调试日志
           // 同时支持 "data:" 和 "data: " 两种格式
           if (line.startsWith('data:')) {
             // 移除 "data:" 前缀，并去除可能的前导空格
@@ -115,6 +116,7 @@ class AgentBayChatService {
 
             try {
               const data = JSON.parse(dataStr);
+              console.log('[AgentBay] 解析数据:', data); // 调试日志
 
               // 根据 Object 类型处理不同事件
               // 注意：API 可能返回 "response", "message", "content" 等不同类型
@@ -125,6 +127,7 @@ class AgentBayChatService {
 
               switch (objectType) {
                 case 'content':
+                  // 处理文本内容
                   if (type === 'text' && text) {
                     fullText += text;
                     onMessage?.(text, fullText);
@@ -132,18 +135,21 @@ class AgentBayChatService {
                   }
                   break;
 
-                case 'message':
-                case 'response': // API 也可能返回 response 类型
+                case 'response':
+                  // 只有 response 对象的 completed 表示整个对话结束
                   if (status === 'completed') {
                     console.log('[AgentBay] 对话完成');
                     onComplete?.(fullText);
                     return;
-                  } else if (status === 'failed') {
-                    throw new Error('对话生成失败');
-                  } else if (status === 'in_progress') {
-                    // 进行中，继续接收
-                    console.log('[AgentBay] 生成中...');
                   }
+                  break;
+
+                case 'message':
+                  // message 对象的 completed 只表示当前消息完成，不结束循环
+                  if (status === 'failed') {
+                    throw new Error('对话生成失败');
+                  }
+                  console.log('[AgentBay] 消息状态:', status);
                   break;
 
                 case 'error':
