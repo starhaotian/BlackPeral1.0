@@ -1,187 +1,179 @@
-// AgentBay Chat API Service
-// 实现 GetChatToken -> Chat -> SSE 流式响应的完整流程
+// AgentBay Crew Chat API Service
+// 通过本地代理服务器调用 AgentBay API
 
-const API_BASE_URL = import.meta.env.VITE_AGENTBAY_API_URL || 'https://agentbay.aliyuncs.com';
-const API_KEY = import.meta.env.VITE_AGENTBAY_API_KEY;
+const PROXY_URL = ''; // 使用相对路径，通过 Vite 代理
 
 class AgentBayChatService {
   constructor() {
-    this.apiKey = API_KEY;
-    this.baseUrl = API_BASE_URL;
-    this.accessToken = null;
+    this.externalUserId = 'user-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8);
     this.sessionId = null;
   }
 
   /**
-   * 检查 API 配置是否有效
+   * 获取 ChatToken（通过代理）
    */
-  isConfigured() {
-    return !!this.apiKey;
+  async getChatToken() {
+    const url = `${PROXY_URL}/api/token`;
+    
+    console.log('[AgentBay] 获取 ChatToken...');
+    console.log('[AgentBay] ExternalUserId:', this.externalUserId);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        externalUserId: this.externalUserId,
+      }),
+    });
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(`GetChatToken 失败: ${result.error}`);
+    }
+
+    console.log('[AgentBay] ChatToken 获取成功');
+    return result.token;
   }
 
   /**
-   * 步骤 1: 获取 Chat 访问令牌 (AccessToken)
-   * @param {string} sessionId - 可选的会话ID
-   * @returns {Promise<string>} AccessToken
-   */
-  async getChatToken(sessionId = null) {
-    if (!this.isConfigured()) {
-      throw new Error('AgentBay API Key 未配置');
-    }
-
-    try {
-      const response = await fetch(`${this.baseUrl}/api/v1/chat/token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          session_id: sessionId,
-          // 可选：指定镜像类型
-          image_id: 'code_latest',
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || '获取 Chat Token 失败');
-      }
-
-      const result = await response.json();
-      this.accessToken = result.access_token;
-      this.sessionId = result.session_id || sessionId;
-      
-      return this.accessToken;
-    } catch (error) {
-      console.error('获取 Chat Token 失败:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 步骤 2 & 3: 调用 Chat 接口并接收 SSE 流式响应
-   * @param {string} message - 用户消息
-   * @param {Function} onMessage - 收到消息时的回调 (delta, fullText)
-   * @param {Function} onComplete - 对话完成时的回调 (fullText)
-   * @param {Function} onError - 错误回调
-   * @returns {Promise<void>}
+   * Chat - 流式对话（通过代理）
    */
   async chat(message, onMessage, onComplete, onError) {
     try {
-      // 确保有 AccessToken
-      if (!this.accessToken) {
-        await this.getChatToken(this.sessionId);
+      // 生成 SessionId
+      if (!this.sessionId) {
+        this.sessionId = `session-${Date.now()}`;
       }
 
-      // 建立 SSE 连接
-      const response = await fetch(`${this.baseUrl}/api/v1/chat/completions`, {
+      // 构建 Input 参数
+      const inputArray = [{
+        Role: 'user',
+        Content: [{
+          Type: 'text',
+          Text: message,
+        }],
+      }];
+      const inputString = JSON.stringify(inputArray);
+
+      const url = `${PROXY_URL}/api/chat`;
+
+      console.log('[AgentBay] 发起对话...');
+      console.log('[AgentBay] SessionId:', this.sessionId);
+      console.log('[AgentBay] Message:', message);
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.accessToken}`,
         },
         body: JSON.stringify({
-          message: message,
-          session_id: this.sessionId,
-          stream: true, // 启用流式响应
+          ExternalUserId: this.externalUserId,
+          SessionId: this.sessionId,
+          Input: inputString,
         }),
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Chat 请求失败');
+        const errorText = await response.text();
+        throw new Error(`Chat 失败: HTTP ${response.status} - ${errorText}`);
       }
 
       // 处理 SSE 流
+      console.log('[AgentBay] 接收 SSE 流...');
+      
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let fullText = '';
       let buffer = '';
+      let fullText = '';
 
       while (true) {
         const { done, value } = await reader.read();
-        
+
         if (done) {
+          console.log('[AgentBay] SSE 流结束');
           onComplete?.(fullText);
           break;
         }
 
-        // 解码并处理 SSE 数据
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        buffer = lines.pop(); // 保留不完整的行
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6); // 移除 'data: ' 前缀
-            
-            if (data === '[DONE]') {
-              onComplete?.(fullText);
-              return;
+          // 同时支持 "data:" 和 "data: " 两种格式
+          if (line.startsWith('data:')) {
+            // 移除 "data:" 前缀，并去除可能的前导空格
+            let dataStr = line.slice(5);
+            if (dataStr.startsWith(' ')) {
+              dataStr = dataStr.slice(1);
             }
+            dataStr = dataStr.trim();
+            if (!dataStr || dataStr === '[DONE]') continue;
 
             try {
-              const parsed = JSON.parse(data);
-              const delta = parsed.choices?.[0]?.delta?.content || '';
-              
-              if (delta) {
-                fullText += delta;
-                onMessage?.(delta, fullText);
+              const data = JSON.parse(dataStr);
+
+              // 根据 Object 类型处理不同事件
+              // 注意：API 可能返回 "response", "message", "content" 等不同类型
+              const objectType = data.Object || data.object;
+              const status = data.Status || data.status;
+              const type = data.Type || data.type;
+              const text = data.Text || data.text;
+
+              switch (objectType) {
+                case 'content':
+                  if (type === 'text' && text) {
+                    fullText += text;
+                    onMessage?.(text, fullText);
+                    console.log('[AgentBay] 收到文本:', text);
+                  }
+                  break;
+
+                case 'message':
+                case 'response': // API 也可能返回 response 类型
+                  if (status === 'completed') {
+                    console.log('[AgentBay] 对话完成');
+                    onComplete?.(fullText);
+                    return;
+                  } else if (status === 'failed') {
+                    throw new Error('对话生成失败');
+                  } else if (status === 'in_progress') {
+                    // 进行中，继续接收
+                    console.log('[AgentBay] 生成中...');
+                  }
+                  break;
+
+                case 'error':
+                  throw new Error(data.Message || data.message || '对话发生错误');
+
+                default:
+                  // 未知类型，记录日志但继续处理
+                  console.log('[AgentBay] 未知事件类型:', objectType, data);
               }
             } catch (e) {
-              // 忽略解析错误
+              if (e.message.includes('对话')) throw e;
             }
           }
         }
       }
     } catch (error) {
-      console.error('Chat 请求失败:', error);
+      console.error('[AgentBay] Chat 失败:', error);
       onError?.(error.message);
       throw error;
     }
   }
 
-  /**
-   * 发送消息并获取完整响应（非流式）
-   * @param {string} message - 用户消息
-   * @returns {Promise<string>} 完整响应文本
-   */
-  async sendMessage(message) {
-    return new Promise((resolve, reject) => {
-      let fullText = '';
-      
-      this.chat(
-        message,
-        (delta, full) => {
-          fullText = full;
-        },
-        (final) => {
-          resolve(final || fullText);
-        },
-        (error) => {
-          reject(new Error(error));
-        }
-      );
-    });
-  }
-
-  /**
-   * 重置会话
-   */
   reset() {
-    this.accessToken = null;
     this.sessionId = null;
   }
 
-  /**
-   * 获取当前会话ID
-   */
-  getSessionId() {
-    return this.sessionId;
+  isConfigured() {
+    return true;
   }
 }
 
-// 导出单例实例
 export const agentBayChat = new AgentBayChatService();
 export default AgentBayChatService;

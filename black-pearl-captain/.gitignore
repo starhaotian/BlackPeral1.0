@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Python
+server/venv/
+__pycache__/
+*.pyc
+
 # Environment variables
 .env
 .env.local

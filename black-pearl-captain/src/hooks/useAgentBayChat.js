@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { agentBayChat } from '../services/agentbayChat';
 
 /**
@@ -9,8 +9,6 @@ export function useAgentBayChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState(null);
-  const [sessionId, setSessionId] = useState(null);
-  const abortControllerRef = useRef(null);
 
   /**
    * 发送消息并获取流式响应
@@ -22,14 +20,6 @@ export function useAgentBayChat() {
     setIsLoading(true);
     setIsStreaming(true);
     setError(null);
-
-    // 检查 API 配置
-    if (!agentBayChat.isConfigured()) {
-      setError('AgentBay API Key 未配置');
-      setIsLoading(false);
-      setIsStreaming(false);
-      throw new Error('AgentBay API Key 未配置。请在 .env 文件中设置 VITE_AGENTBAY_API_KEY');
-    }
 
     try {
       let fullText = '';
@@ -45,7 +35,6 @@ export function useAgentBayChat() {
         (final) => {
           setIsStreaming(false);
           setIsLoading(false);
-          setSessionId(agentBayChat.getSessionId());
         },
         // onError - 错误
         (errMsg) => {
@@ -69,26 +58,16 @@ export function useAgentBayChat() {
    */
   const resetSession = useCallback(() => {
     agentBayChat.reset();
-    setSessionId(null);
     setError(null);
-  }, []);
-
-  /**
-   * 获取当前会话ID
-   */
-  const getCurrentSessionId = useCallback(() => {
-    return agentBayChat.getSessionId();
   }, []);
 
   return {
     isLoading,
     isStreaming,
     error,
-    sessionId,
-    isConfigured: agentBayChat.isConfigured(),
+    isConfigured: true, // 不需要外部配置
     sendMessage,
     resetSession,
-    getCurrentSessionId,
   };
 }
 
